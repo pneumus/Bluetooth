@@ -2,6 +2,14 @@
 # Author: Máté Gál
 # Contact: gal.mateo@gmail.com
 
+# Note: 
+# One known issue is that discovery is flooding the terminal 
+# and blocking / slowing other commands
+# A non-interactive call could solve this
+# i.e. "sudo bluetoothctl --timeout 3 mgmt.find"
+# but this command does not register the MAC address 
+# so connection is not working at the moment
+
 import re
 import ptyprocess
 import subprocess
