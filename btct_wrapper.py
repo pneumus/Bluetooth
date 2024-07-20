@@ -125,7 +125,7 @@ class BluetoothControl:
         """
         The method returns the MAC addresses of nearby devices
         Input arguments are timeout in seconds and a boolean value to turn on logging
-        Note: Instead of "bluetoothctl --timeout 3 scan on" another apporach "mgmt.find" is used
+        Note: Instead of "bluetoothctl --timeout 3 scan on" another apporach "mgmt.find" should be used
         otherwise the interactive shell is flooded with newly found devices
         """
         try:
