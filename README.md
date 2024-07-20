@@ -1,5 +1,10 @@
 ### Hands-on Libraries for Bluetooth
 
+<b>Note:</b> some of the methods in this library need elevated privileges
+<br>
+i.e. set_adapter_state() or set_service_state()
+<br>
+
 #### Discovery Sample Code for btct_wrapper.py
 
 ```python
