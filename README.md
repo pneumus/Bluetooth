@@ -1,1 +1,1 @@
-### A Simple Python Wrapper for <b>bluetoothctl</b> ( Linux )
+### Hands-on Libraries for Bluetooth
