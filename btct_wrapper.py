@@ -8,7 +8,7 @@
 # A non-interactive call could solve this
 # i.e. "sudo bluetoothctl --timeout 3 mgmt.find"
 # but this command does not register the MAC address 
-# so connection is not working at the moment
+# so device discovery is slower than expected at the moment
 
 import re
 import ptyprocess
