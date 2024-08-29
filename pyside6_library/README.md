@@ -1,0 +1,1 @@
+pacman -S pyside6 qt6-connectivity
