@@ -1,5 +1,4 @@
 import sys
-import time
 from PySide6.QtCore import QCoreApplication, QTimer, QObject, Slot, QEventLoop
 from PySide6.QtBluetooth import QBluetoothDeviceDiscoveryAgent, QLowEnergyController, QBluetoothDeviceInfo
 
@@ -17,16 +16,17 @@ class BLEManager(QObject):
         self.controller = None
         self._is_connected = False
 
+        # Connect the device discovery handler
         self.discovery_agent.deviceDiscovered.connect(self._add_device)
 
-    @Slot(object)
-    def _add_device(self, device):
+    @Slot(QBluetoothDeviceInfo)
+    def _add_device(self, device: QBluetoothDeviceInfo):
         if device not in self.devices:
             self.devices.append(device)
             self._device_cache[device.address().toString()] = device
 
     def scan_ble_devices(self, timeout_ms=5000):
-        """Scans for BLE devices and returns a list of dictionaries."""
+        """Scans for BLE devices synchronously using a local event loop."""
         self.devices = []
         self._device_cache = {}
         local_loop = QEventLoop()
@@ -70,7 +70,6 @@ class BLEManager(QObject):
         device_info = self._device_cache.get(target_mac)
 
         if not device_info:
-            print(f"Error: Target device {target_mac} was not found in scan cache.")
             return False
 
         print(f"Connecting to {target_mac}...")
@@ -89,17 +88,21 @@ class BLEManager(QObject):
 
         @Slot(QLowEnergyController.Error)
         def on_error(error):
-            print(f"Connection error occurred: {error}")
-            self._is_connected = False
-            local_loop.quit()
+            if self.controller:
+                self._is_connected = False
+                local_loop.quit()
 
         def on_timeout():
             print("Connection attempt timed out.")
             if self.controller:
-                self.controller.disconnectFromDevice()
+                # Wait for the controller to safely exit transitory states
+                if self.controller.state() != QLowEnergyController.ControllerState.UnconnectedState:
+                    timeout_loop = QEventLoop()
+                    self.controller.disconnected.connect(timeout_loop.quit)
+                    self.controller.disconnectFromDevice()
+                    timeout_loop.exec()
             local_loop.quit()
 
-        # Wire up live connection monitors
         self.controller.connected.connect(on_connected)
         self.controller.errorOccurred.connect(on_error)
 
@@ -127,39 +130,50 @@ class BLEManager(QObject):
         print("Disconnecting from device...")
         self._is_connected = False
 
-        # Check if it's already disconnected to skip unnecessary waiting
         if self.controller.state() == QLowEnergyController.ControllerState.UnconnectedState:
             self.controller.deleteLater()
             self.controller = None
             print("Disconnected successfully (already closed).")
             return
 
-        # Create a local block loop to wait specifically for the disconnection to finish
         disconnect_loop = QEventLoop()
         self.controller.disconnected.connect(disconnect_loop.quit)
 
-        # Trigger the asynchronous disconnect pipeline
         self.controller.disconnectFromDevice()
-
-        # Block the script right here until the hardware confirms it is fully disconnected
         disconnect_loop.exec()
 
-        # Clean cleanup now that we are guaranteed to be in UnconnectedState
         self.controller.deleteLater()
         self.controller = None
         print("Disconnected successfully and cleaned up.")
 
 
 if __name__ == "__main__":
-
     TARGET_MAC = "CE:EE:A8:9B:17:AC"
     ble_manager = BLEManager()
+
+    # 1. Run the synchronous device scan
     ble_devices = ble_manager.scan_ble_devices(timeout_ms=3000)
 
+    # 2. Check if the target device address was found during the scan
     device_found = any(device["address"] == TARGET_MAC for device in ble_devices)
+
     if device_found:
-        # Use the target MAC explicitly here to avoid signature errors
+        # 3. Target found nearby, execute the connection attempt
         success = ble_manager.connect_to_mac(TARGET_MAC, timeout_ms=5000)
 
-    time.sleep(1)
-    ble_manager.disconnect()
+        if success:
+            def execution_pipeline():
+                print("Connected! Doing work...")
+                ble_manager.disconnect()
+                ble_manager.app.quit()
+
+
+            # Schedule execution without freezing background asynchronous hardware layers
+            QTimer.singleShot(1000, execution_pipeline)
+            sys.exit(ble_manager.app.exec())
+        else:
+            print("Failed to connect.")
+            sys.exit(0)
+    else:
+        print("Device not found")
+        sys.exit(0)
