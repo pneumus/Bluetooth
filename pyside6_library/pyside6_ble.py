@@ -4,7 +4,7 @@ from PySide6.QtCore import QCoreApplication, QTimer, QObject, Slot, QEventLoop
 from PySide6.QtBluetooth import QBluetoothDeviceDiscoveryAgent, QLowEnergyController, QBluetoothDeviceInfo
 
 
-class BLEScanner(QObject):
+class BLEManager(QObject):
     def __init__(self):
         super().__init__()
         self.app = QCoreApplication.instance()
@@ -153,13 +153,13 @@ class BLEScanner(QObject):
 if __name__ == "__main__":
 
     TARGET_MAC = "CE:EE:A8:9B:17:AC"
-    scanner = BLEScanner()
-    ble_devices = scanner.scan_ble_devices(timeout_ms=3000)
+    ble_manager = BLEManager()
+    ble_devices = ble_manager.scan_ble_devices(timeout_ms=3000)
 
     device_found = any(device["address"] == TARGET_MAC for device in ble_devices)
     if device_found:
         # Use the target MAC explicitly here to avoid signature errors
-        success = scanner.connect_to_mac(TARGET_MAC, timeout_ms=5000)
+        success = ble_manager.connect_to_mac(TARGET_MAC, timeout_ms=5000)
 
     time.sleep(1)
-    scanner.disconnect()
+    ble_manager.disconnect()
